@@ -38,13 +38,16 @@ struct simple_cuda_then_executor
   template<class Function>
   cuda_future then_execute(Function f, cuda_future& fut) const
   {
+    // before invoking f, make the stream wait on the previous event (stored in fut)
     cudaStreamWaitEvent(fut.stream_, fut.event_, 0);
     kernel<<<1,1,0,fut.stream_>>>(f);
 
+    // record a new event corresponding to f's invocation
     cudaEvent_t new_event;
     cudaEventCreateWithFlags(&new_event, cudaEventDisableTiming);
     cudaEventRecord(new_event, fut.stream_);
 
+    // return a new cuda_future corresponding to the completion of f
     return {fut.stream_, new_event};
   }
 };
